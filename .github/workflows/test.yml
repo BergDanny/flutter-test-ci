@@ -49,3 +49,23 @@ jobs:
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           releaseNotes: "Automated test build from Github Actions"
           file: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload APK to TestMu
+        run: |
+          curl -u "${{ secrets.TESTMU_USERNAME }}:${{ secrets.TESTMU_ACCESS_KEY }}" \
+          -X POST "https://manual-api.lambdatest.com/app/upload/realDevice" \
+          -F "appFile=@build/app/outputs/flutter-apk/app-release.apk" \
+          -F "name=flutter_ci_test_run${{ github.run_number }}" \
+          -F "custom_id=flutter-ci-test-app"
+
+      - name: Trigger TestMu test run
+        run: |
+          curl --location 'https://test-manager-api.lambdatest.com/api/atm/v1/hyperexecute' \
+          --header 'Content-Type: application/json' \
+          --header "Authorization: Basic ${{ secrets.TESTMU_BASIC_AUTH }}" \
+          --data '{
+            "test_run_id": "${{ secrets.TESTMU_TEST_RUN_ID }}",
+            "concurrency": 1,
+            "title": "CI Run #${{ github.run_number }}",
+            "region": "eastus"
+          }'
